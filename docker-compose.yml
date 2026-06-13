@@ -1,0 +1,14 @@
+# Convenience Neo4j for local development.
+# ThreadMap is BYO-Neo4j; this is only here so you can try it quickly.
+services:
+  neo4j:
+    image: neo4j:5
+    container_name: threadmap-neo4j
+    ports:
+      - "7474:7474" # HTTP browser
+      - "7687:7687" # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/threadmap-dev
+      NEO4J_PLUGINS: '["apoc"]'
+    volumes:
+      - ./neo4j-data:/data
