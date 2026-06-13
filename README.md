@@ -129,6 +129,41 @@ edit requires explicit human approval in the UI before it is applied.
 
 ---
 
+## Shell interface (`threadmap`)
+
+A GUI is great; a shell is expedient. The `threadmap` CLI talks straight to Neo4j (the
+server doesn't need to be running), writes TSV to stdout and errors to stderr, and takes
+`--json` for `jq`. No colors, no TUI — pipe it and grep it.
+
+```bash
+# After build: a `threadmap` bin is on the path of the server workspace.
+# Or run without building, from the repo root:
+npm run tm -- ls
+npm run tm -- help
+
+# Capture and link (src/dst by id or exact title)
+npm run tm -- add Workstream "Add WRED support to aggregation router"
+npm run tm -- add Capability AQM
+npm run tm -- link "Add WRED support to aggregation router" IMPLEMENTS AQM
+
+# Inspect & edit
+npm run tm -- ls --type Workstream
+npm run tm -- show "Add WRED support to aggregation router"
+npm run tm -- set "Add WRED support to aggregation router" ws.readiness="Delegate Now" reviewDate=2026-06-20
+npm run tm -- readiness "Add WRED support to aggregation router"
+
+# Review (same 12 saved views as the GUI)
+npm run tm -- views
+npm run tm -- view delegate-now
+npm run tm -- view unowned-work --json | jq -r '.items[].title'
+
+# Raw Cypher — one JSON record per line
+npm run tm -- query 'MATCH (w:ThreadNode {type:"Workstream"}) RETURN w.title' | jq -r '."w.title"'
+```
+
+Commands: `add · ls · show · set · rm · link · unlink · edges · views · view · readiness ·
+neighbors · query · types · help`. Run `threadmap help` for the full list.
+
 ## Keyboard shortcuts
 
 | Key            | Action                          |
