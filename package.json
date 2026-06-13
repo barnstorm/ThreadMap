@@ -1,0 +1,27 @@
+{
+  "name": "threadmap",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Manual-first, Neo4j-backed delegation mind map for senior ICs",
+  "license": "MIT",
+  "workspaces": [
+    "packages/shared",
+    "packages/server",
+    "packages/web"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @threadmap/shared && npm run build --workspace @threadmap/server && npm run build --workspace @threadmap/web",
+    "dev": "concurrently -n server,web -c blue,magenta \"npm run dev --workspace @threadmap/server\" \"npm run dev --workspace @threadmap/web\"",
+    "dev:server": "npm run dev --workspace @threadmap/server",
+    "dev:web": "npm run dev --workspace @threadmap/web",
+    "seed": "npm run seed --workspace @threadmap/server",
+    "test": "npm run test --workspace @threadmap/server",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "neo4j:up": "docker compose up -d neo4j",
+    "neo4j:down": "docker compose down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.2"
+  }
+}
