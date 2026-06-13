@@ -121,8 +121,49 @@ REVIEW
 RAW
   query <cypher>                 Run Cypher; prints each record as a JSON line
   types                          List node and edge types
+  completion bash|zsh            Print a shell completion script
 
-Add --json to most commands for JSON-lines output.`;
+Add --json to most commands for JSON-lines output.
+
+COMPLETION
+  bash:  source <(threadmap completion bash)
+  zsh:   source <(threadmap completion zsh)`;
+
+const COMMANDS = "add ls show set rm link unlink edges views view readiness neighbors query types help completion";
+
+function completionScript(shell: string): string {
+  const views = VIEWS.map((v) => v.id).join(" ");
+  const nodes = NODE_TYPES.join(" ");
+  const edges = EDGE_TYPES.join(" ");
+  if (shell === "bash") {
+    return `# threadmap bash completion — source <(threadmap completion bash)
+_threadmap() {
+  local cur prev; cur="\${COMP_WORDS[COMP_CWORD]}"; prev="\${COMP_WORDS[COMP_CWORD-1]}"
+  if [ "$COMP_CWORD" -eq 1 ]; then COMPREPLY=( $(compgen -W "${COMMANDS}" -- "$cur") ); return; fi
+  case "\${COMP_WORDS[1]}" in
+    view) COMPREPLY=( $(compgen -W "${views}" -- "$cur") );;
+    add)  [ "$COMP_CWORD" -eq 2 ] && COMPREPLY=( $(compgen -W "${nodes}" -- "$cur") );;
+    link) [ "$COMP_CWORD" -eq 3 ] && COMPREPLY=( $(compgen -W "${edges}" -- "$cur") );;
+    completion) COMPREPLY=( $(compgen -W "bash zsh" -- "$cur") );;
+  esac
+}
+complete -F _threadmap threadmap`;
+  }
+  if (shell === "zsh") {
+    return `# threadmap zsh completion — source <(threadmap completion zsh)
+_threadmap() {
+  if (( CURRENT == 2 )); then compadd ${COMMANDS}; return; fi
+  case "\${words[2]}" in
+    view) compadd ${views};;
+    add)  (( CURRENT == 3 )) && compadd ${nodes};;
+    link) (( CURRENT == 4 )) && compadd ${edges};;
+    completion) compadd bash zsh;;
+  esac
+}
+compdef _threadmap threadmap`;
+  }
+  return die(`unknown shell "${shell}" (bash|zsh)`) as never;
+}
 
 async function main(): Promise<void> {
   const [, , cmd, ...rest] = process.argv;
@@ -257,6 +298,12 @@ async function main(): Promise<void> {
       else {
         hood!.nodes.filter((n) => n.id !== id).forEach(nodeLine);
       }
+      return;
+    }
+
+    case "completion": {
+      if (!pos[0]) die("usage: completion bash|zsh");
+      out(completionScript(pos[0]!));
       return;
     }
 

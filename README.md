@@ -162,7 +162,13 @@ npm run tm -- query 'MATCH (w:ThreadNode {type:"Workstream"}) RETURN w.title' | 
 ```
 
 Commands: `add · ls · show · set · rm · link · unlink · edges · views · view · readiness ·
-neighbors · query · types · help`. Run `threadmap help` for the full list.
+neighbors · query · types · completion · help`. Run `threadmap help` for the full list.
+
+Tab completion (commands, view ids, node/edge types):
+
+```bash
+source <(threadmap completion bash)   # or: zsh
+```
 
 ## Keyboard shortcuts
 
@@ -196,7 +202,8 @@ npm run dev:server   # server only (tsx watch)
 npm run dev:web      # web only (vite)
 npm run seed         # load the QoS example into Neo4j
 npm run build        # build shared, server, web
-npm test             # server unit tests (vitest)
+npm test             # server unit tests (vitest); integration suite auto-skips without a DB
+npm run test:it      # integration smoke tests — needs Neo4j and WIPES it (use neo4j:up first)
 npm run typecheck    # typecheck all workspaces
 npm run neo4j:up     # start local Neo4j container
 npm run neo4j:down   # stop it

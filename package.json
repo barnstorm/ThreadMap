@@ -17,6 +17,7 @@
     "seed": "npm run seed --workspace @threadmap/server",
     "tm": "npm run cli --workspace @threadmap/server --",
     "test": "npm run test --workspace @threadmap/server",
+    "test:it": "npm run test:it --workspace @threadmap/server",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "neo4j:up": "docker compose up -d neo4j",
     "neo4j:down": "docker compose down"

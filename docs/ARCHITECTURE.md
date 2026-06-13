@@ -75,9 +75,13 @@ dependency only points one way, so the core has no knowledge of the LLM.
 
 - `packages/server/test/logic.test.ts` unit-tests the pure logic (readiness, edge-type
   suggestion, node/edge mapping round-trips, the view catalog, validation) — no DB required.
-- Integration against a live Neo4j: `npm run neo4j:up && npm run seed`, then exercise the API
-  (`/health`, `/api/graph`, `/api/views/:id`) and the web app. The seed dataset is built to
-  light up every view.
+- `packages/server/test/integration.test.ts` exercises the repositories and every key view
+  against a live Neo4j. It is opt-in (gated on `THREADMAP_IT=1`) because it **wipes** the
+  target database — run `npm run neo4j:up && npm run test:it` against a throwaway instance.
+  The suite auto-skips on a normal `npm test`.
+- Manual integration: `npm run neo4j:up && npm run seed`, then exercise the API
+  (`/health`, `/api/graph`, `/api/views/:id`), the CLI (`npm run tm -- view delegate-now`),
+  and the web app. The seed dataset is built to light up every view.
 
 ## Possible (non-core) extension: vector RAG
 
