@@ -40,9 +40,9 @@ export function Inspector(props: Props) {
   if (node) return <NodeInspector {...props} node={node} />;
   return (
     <div className="empty">
-      Select a node or edge, or capture something new.
+      Right-click the canvas to add a node, or select a node or edge.
       <div style={{ marginTop: 12 }} className="small">
-        <span className="kbd">c</span> capture · <span className="kbd">/</span> search · <span className="kbd">Esc</span> deselect
+        <span className="kbd">right-click</span> add · <span className="kbd">c</span> capture · <span className="kbd">/</span> search · <span className="kbd">Esc</span> deselect
       </div>
     </div>
   );

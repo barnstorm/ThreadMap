@@ -179,8 +179,11 @@ source <(threadmap completion bash)   # or: zsh
 | `Enter`        | Add the captured node           |
 | `Esc`          | Deselect / cancel edge drawing  |
 
-Draw an edge by selecting a node → **Draw edge from here** → clicking the target → picking
-the (type-aware suggested) relationship.
+**Right-click the canvas** to add a node — pick a type and it drops at the cursor, then edit
+it in the inspector. **Right-click a node** for quick actions (draw edge, open, delete).
+
+Draw an edge by right-clicking a node (or **Draw edge from here** in the inspector) →
+clicking the target → picking the (type-aware suggested) relationship.
 
 ---
 

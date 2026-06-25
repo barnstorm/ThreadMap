@@ -2,25 +2,37 @@ import cytoscape, { type Core, type ElementDefinition } from "cytoscape";
 import { useEffect, useRef } from "react";
 import type { Graph, NodeType, NodeTypeMeta } from "@threadmap/shared";
 
+export interface CanvasPos {
+  x: number;
+  y: number;
+}
+
 interface Props {
   graph: Graph;
   nodeTypeMeta: Record<NodeType, NodeTypeMeta>;
   selectedId?: string;
   highlightIds?: Set<string>;
+  /** Exact model positions to place specific nodes at (e.g. right-click create). */
+  placements?: Map<string, CanvasPos>;
   onSelectNode: (id: string) => void;
   onSelectEdge: (id: string) => void;
   onBackground: () => void;
+  onBackgroundContext: (modelPos: CanvasPos, screen: { x: number; y: number }) => void;
+  onNodeContext: (id: string, screen: { x: number; y: number }) => void;
 }
 
-export function GraphCanvas({ graph, nodeTypeMeta, selectedId, highlightIds, onSelectNode, onSelectEdge, onBackground }: Props) {
+export function GraphCanvas(props: Props) {
+  const { graph, nodeTypeMeta, selectedId, highlightIds, placements } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
-  // Remember node positions so re-renders don't reshuffle the whole map.
-  const posRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const posRef = useRef<Map<string, CanvasPos>>(new Map());
+  // Latest callbacks, so the once-bound cytoscape handlers never go stale.
+  const handlers = useRef(props);
+  handlers.current = props;
 
-  // Initialise once.
   useEffect(() => {
     if (!containerRef.current) return;
+    containerRef.current.addEventListener("contextmenu", (e) => e.preventDefault());
     const cy = cytoscape({
       container: containerRef.current,
       minZoom: 0.2,
@@ -64,18 +76,29 @@ export function GraphCanvas({ graph, nodeTypeMeta, selectedId, highlightIds, onS
         { selector: "edge.selected", style: { "line-color": "#6366f1", "target-arrow-color": "#6366f1", width: 2.5 } },
       ],
     });
-    cy.on("tap", "node", (e) => onSelectNode(e.target.id()));
-    cy.on("tap", "edge", (e) => onSelectEdge(e.target.id()));
+    cy.on("tap", "node", (e) => handlers.current.onSelectNode(e.target.id()));
+    cy.on("tap", "edge", (e) => handlers.current.onSelectEdge(e.target.id()));
     cy.on("tap", (e) => {
-      if (e.target === cy) onBackground();
+      if (e.target === cy) handlers.current.onBackground();
     });
-    cy.on("dragfree", "node", (e) => posRef.current.set(e.target.id(), e.target.position()));
+    cy.on("cxttap", (e) => {
+      const oe = e.originalEvent as MouseEvent | undefined;
+      const screen = { x: oe?.clientX ?? 0, y: oe?.clientY ?? 0 };
+      if (e.target === cy) handlers.current.onBackgroundContext(e.position, screen);
+    });
+    cy.on("cxttap", "node", (e) => {
+      const oe = e.originalEvent as MouseEvent | undefined;
+      handlers.current.onNodeContext(e.target.id(), { x: oe?.clientX ?? 0, y: oe?.clientY ?? 0 });
+    });
+    cy.on("dragfree", "node", (e) => {
+      posRef.current.set(e.target.id(), e.target.position());
+    });
     cyRef.current = cy;
     return () => cy.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync elements when the graph changes.
+  // Sync elements when the graph changes, honoring explicit placements.
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
@@ -86,19 +109,32 @@ export function GraphCanvas({ graph, nodeTypeMeta, selectedId, highlightIds, onS
         position: posRef.current.get(n.id),
       });
     }
-    for (const e of graph.edges) {
-      els.push({ data: { id: e.id, source: e.source, target: e.target, label: e.type } });
-    }
+    for (const e of graph.edges) els.push({ data: { id: e.id, source: e.source, target: e.target, label: e.type } });
     cy.json({ elements: els });
-    // Only layout nodes without a known position, so manual placement sticks.
+
+    // Place any node we have an explicit position for (right-click create).
+    cy.nodes().forEach((n) => {
+      if (posRef.current.has(n.id())) return;
+      const p = placements?.get(n.id());
+      if (p) {
+        n.position(p);
+        posRef.current.set(n.id(), p);
+      }
+    });
+
     const unplaced = cy.nodes().filter((n) => !posRef.current.has(n.id()));
-    if (unplaced.length > 0) {
-      const layout = cy.layout({ name: "cose", animate: false, fit: posRef.current.size === 0, randomize: posRef.current.size === 0 });
-      layout.run();
-      cy.nodes().forEach((n) => {
-        posRef.current.set(n.id(), n.position());
-      });
+    if (unplaced.length === 0) return;
+    if (unplaced.length === cy.nodes().length) {
+      // Fresh graph: lay everything out.
+      cy.layout({ name: "cose", animate: false, fit: true, randomize: true }).run();
+    } else {
+      // A few new nodes: lay out only those, leaving existing positions stable.
+      unplaced.layout({ name: "cose", animate: false, fit: false, randomize: true }).run();
     }
+    cy.nodes().forEach((n) => {
+      posRef.current.set(n.id(), n.position());
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph, nodeTypeMeta]);
 
   // Selection + highlight styling.

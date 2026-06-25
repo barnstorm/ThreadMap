@@ -9,7 +9,8 @@ import {
 } from "@threadmap/shared";
 import { api, type Meta } from "./lib/api.js";
 import { CaptureBar } from "./components/CaptureBar.js";
-import { GraphCanvas } from "./components/GraphCanvas.js";
+import { ContextMenu, type MenuItem } from "./components/ContextMenu.js";
+import { GraphCanvas, type CanvasPos } from "./components/GraphCanvas.js";
 import { Inspector } from "./components/Inspector.js";
 import { Sidecar } from "./components/Sidecar.js";
 import { ViewsPanel } from "./components/ViewsPanel.js";
@@ -31,6 +32,8 @@ export function App() {
 
   const [connectSource, setConnectSource] = useState<string | null>(null);
   const [pendingTarget, setPendingTarget] = useState<string | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; kind: "bg" | "node"; modelPos?: CanvasPos; nodeId?: string } | null>(null);
+  const placementsRef = useRef<Map<string, CanvasPos>>(new Map());
 
   const captureRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -79,6 +82,13 @@ export function App() {
 
   const createNode = async (type: NodeType, title: string) => {
     const node = await api.createNode({ type, title });
+    await refreshGraph();
+    selectNode(node.id);
+  };
+
+  const createNodeAt = async (type: NodeType, modelPos: CanvasPos) => {
+    const node = await api.createNode({ type, title: `New ${type}` });
+    placementsRef.current.set(node.id, modelPos);
     await refreshGraph();
     selectNode(node.id);
   };
@@ -229,9 +239,12 @@ export function App() {
             nodeTypeMeta={meta.nodeTypeMeta}
             selectedId={selNode}
             highlightIds={highlight}
+            placements={placementsRef.current}
             onSelectNode={selectNode}
             onSelectEdge={(id) => { setSelNode(undefined); setSelEdge(id); setTab("inspector"); }}
             onBackground={() => { setSelNode(undefined); setSelEdge(undefined); }}
+            onBackgroundContext={(modelPos, screen) => setCtxMenu({ kind: "bg", x: screen.x, y: screen.y, modelPos })}
+            onNodeContext={(id, screen) => setCtxMenu({ kind: "node", x: screen.x, y: screen.y, nodeId: id })}
           />
         </div>
 
@@ -265,6 +278,28 @@ export function App() {
           )}
         </div>
       </div>
+
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          heading={ctxMenu.kind === "bg" ? "Add node" : nodesById.get(ctxMenu.nodeId ?? "")?.title}
+          items={
+            ctxMenu.kind === "bg"
+              ? meta.nodeTypes.map<MenuItem>((t) => ({
+                  label: meta.nodeTypeMeta[t].label,
+                  color: meta.nodeTypeMeta[t].color,
+                  onClick: () => ctxMenu.modelPos && createNodeAt(t, ctxMenu.modelPos),
+                }))
+              : [
+                  { label: "↳ Draw edge from here", onClick: () => { setConnectSource(ctxMenu.nodeId!); setPendingTarget(null); } },
+                  { label: "Open in inspector", onClick: () => selectNode(ctxMenu.nodeId!) },
+                  { label: "Delete", danger: true, onClick: () => deleteNode(ctxMenu.nodeId!) },
+                ]
+          }
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
     </div>
   );
 }
